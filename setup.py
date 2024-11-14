@@ -32,7 +32,7 @@ setup(
         'grpcio'==1.62.1,
         'grpcio-tools'==1.62.1,
         'protobuf'==4.25.3,
-        'sentence-transformers,
+        'sentence-transformers',
     ],
     extras_require={
         'finetune': ['deepspeed', 'flash-attn'],

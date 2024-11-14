@@ -29,12 +29,25 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install flake8 pytest
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    - name: Build .whl Package
+      run: |
+        python -m build
+    - name: Save artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: python-whl
+        path: dist/*.whl
 
   release:
     needs: build
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    - name: Download build artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: python-whl
+        path: ./dist
     - name: Create Release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -46,4 +59,13 @@ jobs:
           -H "Authorization: token $GITHUB_TOKEN" \
           -H "Accept: application/vnd.github.v3+json" \
           https://api.github.com/repos/${{ github.repository }}/releases \
-          -d "{\"tag_name\":\"$tag_name\",\"name\":\"$release_name\",\"body\":\"$body\",\"draft\":false,\"prerelease\":false}"
+          -d "{\"tag_name\":\"$tag_name\",\"name\":\"$release_name\",\"body\":\"$body\",\"draft\":false,\"prerelease\":false}" \
+          | jq -r .upload_url \
+          | sed -e "s/{?name,label}//" \
+          | xargs -I{} curl -X POST \
+              -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github.v3+json" \
+              -F "name=$(basename dist/*.whl)" \
+              -F "label=Python Wheel Package" \
+              -F "file=@dist/*.whl" \
+              {}
